@@ -1,0 +1,83 @@
+local Template = { }
+
+Template.x         = 0
+Template.y         = 0
+Template.width     = 32
+Template.height    = 32
+Template.focusable = true -- While false, this element won't block mouse actions and cannot be focused.
+Template.enabled   = true -- While false, this element and children will not be visible, updated, nor recieve events.
+
+
+------------------------------------------------------------------------------------------------------------------------
+function Template:init( )
+	
+end
+
+
+------------------------------------------------------------------------------------------------------------------------
+function Template:destroyed( )
+	
+end
+
+
+------------------------------------------------------------------------------------------------------------------------
+function Template:update( dt )
+	
+end
+
+
+------------------------------------------------------------------------------------------------------------------------
+function Template:draw( )
+	
+end
+
+
+------------------------------------------------------------------------------------------------------------------------
+function Template:keypressed( key, scancode, isrepeat )
+	
+end
+
+
+------------------------------------------------------------------------------------------------------------------------
+function Template:keyreleased( key, scancode )
+	
+end
+
+
+------------------------------------------------------------------------------------------------------------------------
+function Template:textedited( text, start, length )
+	
+end
+
+
+------------------------------------------------------------------------------------------------------------------------
+function Template:textinput( text )
+	
+end
+
+
+------------------------------------------------------------------------------------------------------------------------
+function Template:mousemoved( x, y, dx, dy, istouch )
+	
+end
+
+
+------------------------------------------------------------------------------------------------------------------------
+function Template:mousepressed( x, y, button, istouch, presses )
+	
+end
+
+
+------------------------------------------------------------------------------------------------------------------------
+function Template:mousereleased( x, y, button, istouch, presses )
+	
+end
+
+
+------------------------------------------------------------------------------------------------------------------------
+function Template:wheelmoved( x, y )
+	
+end
+
+
+lui.register('Template', Template)
