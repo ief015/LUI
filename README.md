@@ -21,6 +21,7 @@ LUI is the middle-ground between the immediate-mode GUI libraries and the powerh
 - Hierarchy-based parenting system
 - Optional layout anchoring system (COMING SOON)
 - Z-Ordering  (COMING SOON)
+- Tab indexing (COMING SOON)
 - Element rendering is culled outside parent's bounds (togglable, enabled by default) (COMING SOON)
 - Many callbacks can be assigned to an element event
 - Keyframe value animation system (COMING SOON)
