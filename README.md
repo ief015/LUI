@@ -16,6 +16,7 @@ LUI is the middle-ground between the immediate-mode GUI libraries and the powerh
 ### Features
 
 - Includes a clean and simple default interface with essentials
+- UTF8 support
 - Easily customizable
 - Hierarchy-based parenting system
 - Optional layout anchoring system (COMING SOON)
@@ -27,7 +28,7 @@ LUI is the middle-ground between the immediate-mode GUI libraries and the powerh
 
 ### Example
 
-`example output image`
+![example/main.lua](example/example.gif "example/main.lua")
 
 ```lua
 lui = require 'lui/lui'
