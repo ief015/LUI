@@ -328,6 +328,7 @@ function lui.clear( )
 	
 	lui._.hoverElements = { }
 	lui._.focusElements = { }
+	
 end
 
 
@@ -365,6 +366,8 @@ function lui.update( dt, _parent )
 		if elem.enabled then
 			
 			lui.invoke(elem, 'onPreUpdate')
+			
+			lui.invalidate(elem)
 			
 			-- TODO: update animation state here
 			
@@ -665,58 +668,26 @@ end
 
 
 ------------------------------------------------------------------------------------------------------------------------
+-- Returns true if the value givin is an Element, but does not check if it is valid. (See lui.isvalid)
+function lui.iselement( element )
+	
+	local mt = getmetatable(element)
+	return mt and ( mt.__index == lui._.base )
+	
+end
+
+
+------------------------------------------------------------------------------------------------------------------------
+-- Returns true if the value given is an Element that is also valid.
 function lui.isvalid( element )
 	
 	local mt = getmetatable(element)
 	return mt and ( mt.__index == lui._.base ) and ( element._.valid == true )
 	
-	--[[ TODO: OLD METHOD
-	return  type(element)   == 'table'
-	    and type(element._) == 'table'
-	    and element._.valid == true
-	--]]
 end
 
 
 ------------------------------------------------------------------------------------------------------------------------
---[[ TODO: unneeded old trace method?
-function lui.trace2( x, y, _parent )
-	
-	local p = ((_parent == nil) and lui or _parent)
-	
-	local t = { _parent } -- TODO: nil IS appended as [1]...not good
-	
-	for i = 1, #p._.elements do
-		
-		local elem = p._.elements[i]
-		
-		if lui.isvalid(elem) then
-			
-			local tx = x - elem.x
-			local ty = y - elem.y
-			
-			if tx >= 0 and ty >= 0 and tx < elem.width and ty < elem.height then
-				
-				if elem.focusable then
-					
-					t = lui.trace(tx, ty, elem)
-					
-				else
-					
-					t = { unpack(t), unpack(lui.trace(tx, ty, elem)) }
-					
-				end
-				
-			end
-			
-		end
-		
-	end
-	
-	return t
-	
-end]]
-
 function lui.trace( x, y, onlyFocusable )
 	
 	local results = { }
@@ -1036,6 +1007,11 @@ end
 
 ------------------------------------------------------------------------------------------------------------------------
 function lui.animation( element, anim, keyframes, start, flags )
+	
+	error("not yet implemented")
+	
+	if not lui.isvalid(element) then return end
+	
 	--[[ TODO: not yet implemented
 	
 	self:anim('name', keyframes, 0, flags) -- creates/overwrites and returns animation 'name', starting value 0
@@ -1133,7 +1109,62 @@ function lui.animation( element, anim, keyframes, start, flags )
 	
 	]]
 	
-	error("not yet implemented")
+end
+
+
+------------------------------------------------------------------------------------------------------------------------
+function lui.invalidate( element )
+	
+	-- Invalidate position and size based on anchoring
+	
+	-- TODO: not working yet
+	
+	if not lui.isvalid(element) then return end
+	if type(element.anchor) == 'table' then return end
+	
+	local anchor = element.anchor
+	local parent = element:getParent()
+	
+	if anchor.left then
+		
+		element.x = anchor.left
+		
+		if anchor.right then
+			
+			local pw = ( lui.iselement(parent) and parent.width or love.graphics.getWidth() )
+			
+			element.width = math.max(0, pw - anchor.left - anchor.right)
+			
+		end
+		
+	elseif anchor.right then
+		
+		local pw = ( lui.iselement(parent) and parent.width or love.graphics.getWidth() )
+		
+		element.x = pw - element.width - anchor.right
+		
+	end
+	
+	
+	if anchor.top then
+		
+		element.y = anchor.top
+		
+		if anchor.bottom then
+			
+			local ph = ( lui.iselement(parent) and parent.height or love.graphics.getHeight() )
+			
+			element.height = math.max(0, ph - anchor.top - anchor.bottom)
+			
+		end
+		
+	elseif anchor.bottom then
+		
+		local ph = ( lui.iselement(parent) and parent.height or love.graphics.getHeight() )
+		
+		element.y = ph - element.height - anchor.bottom
+		
+	end
 	
 end
 

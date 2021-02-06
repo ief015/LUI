@@ -20,6 +20,7 @@ local tests = {
 	'test/focus.lua',
 	'test/textinput.lua',
 	'test/animation.lua',
+	'test/anchoring.lua',
 }
 
 
