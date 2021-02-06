@@ -1,5 +1,5 @@
 # LUI - pronounced 'Louie'
-### Version 0.1.0 (Early alpha - not yet available)
+### Version 0.1.0 (Very early alpha - not yet ready for normal use)
 
 A lightweight retained-mode GUI library for [LÖVE](https://love2d.org/). Get a lovely GUI up and running fast.
 
