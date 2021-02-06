@@ -18,14 +18,14 @@ LUI is the middle-ground between the immediate-mode GUI libraries and the powerh
 - Includes a clean and simple default interface with essentials
 - Friendly API for making new element types
 - Custom themes
-- UTF8 support
+- UTF-8 support
 - Hierarchy-based parenting system
-- Optional layout anchoring system (COMING SOON)
-- Z-Ordering  (COMING SOON)
-- Tab indexing (COMING SOON)
-- Element rendering is culled outside parent's bounds (togglable, on by default) (COMING SOON)
+- Optional layout anchoring system **(Coming soon)**
+- Z-Ordering  **(Coming soon)**
+- Tab indexing **(Coming soon)**
+- Element rendering is culled outside parent's bounds (togglable, on by default) **(Coming soon)**
 - Many callbacks can be assigned to an element event
-- Keyframe value animation system (COMING SOON)
+- Keyframe value animation system **(Coming soon)**
 
 
 ### Example
