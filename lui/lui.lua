@@ -1120,7 +1120,7 @@ function lui.invalidate( element )
 	-- TODO: not working yet
 	
 	if not lui.isvalid(element) then return end
-	if type(element.anchor) == 'table' then return end
+	if type(element.anchor) ~= 'table' then return end
 	
 	local anchor = element.anchor
 	local parent = element:getParent()
