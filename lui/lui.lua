@@ -33,154 +33,31 @@ lui.enabled         = true
 lui.culledRendering = true
 
 -- Utilities for debugging.
-lui.debug = {
-	
-	-- Enables or disables debugging mode.
-	enabled = false,
-	
-	-- When true, an outside bounds border is drawn on top every element.
-	drawBounds = true,
-	
-	colorBounds           = { 1, 0, 0, 1 }, -- Default bounds colour
-	colorBoundsFocus      = { 1, 1, 0, 1 }, -- Bounds colour if element has focus
-	colorBoundsInputFocus = { 0, 1, 0, 1 }, -- Bounds colour if element has input focus
-	
-}
+lui.debug = { }
 
+-- Enables or disables debugging mode.
+lui.debug.enabled = false
+
+-- When true, an outside bounds border is drawn on top every element.
+lui.debug.drawBounds = true
+lui.debug.colorBounds           = { 1, 0, 0, 1 } -- Default bounds colour
+lui.debug.colorBoundsFocus      = { 1, 1, 0, 1 } -- Bounds colour if element has focus
+lui.debug.colorBoundsInputFocus = { 0, 1, 0, 1 } -- Bounds colour if element has input focus
 
 -- Internally used values not intended to be directly read or modified outside of LUI.
-lui._ = {
-	
-	-- Registry for available element types.
-	registry = { },
-	
-	-- Root/top-level element instances.
-	elements = { },
-	
-	-- Elements currently being hovered over.
-	hoverElements = { },
-	
-	-- Elements currently focused. Last element has input focus.
-	focusElements = { },
-	
-	-- Base metatable for every element instance
-	base = {
-		
-		-- Base methods
-		
-		anim = function( self, name, keyframes, start, flags )
-			return lui.animation(self, name, keyframes, start, flags)
-		end,
-		
-		bringToFront = function( self )
-			return lui.bringtofront(self)
-		end,
-		
-		destroy = function( self )
-			return lui.destroy(self)
-		end,
-		
-		-- TODO: is multiple callbacks per event even needed?
-		event = function( self, event, func )
-			return lui.event(self, event, func)
-		end,
-		
-		getElement = function( self, idx )
-			return lui.getElement( idx, self )
-		end,
-		
-		getElements = function( self )
-			return lui.getElements( self )
-		end,
-		
-		getElementCount = function( self )
-			return lui.getElementCount( self )
-		end,
-		
-		getGlobalPos = function( self )
-			return lui.getglobalpos(self)
-		end,
-		
-		getParent = function( self )
-			return self._.parent
-		end,
-		
-		getType = function( self )
-			return self._.type
-		end,
-		
-		invoke = function( self, event, ... )
-			return lui.invoke(self, event, ...)
-		end,
-		
-		isType = function( self, type )
-			return self._.type == string.lower(type)
-		end,
-		
-		hasFocus = function( self )
-			return lui.hasfocus(self)
-		end,
-		
-		hasInputFocus = function( self )
-			return lui.hasinputfocus(self)
-		end,
-		
-		hasParent = function( self )
-			return lui.isvalid(self._.parent)
-		end,
-		
-		isHovering = function( self )
-			return lui.ishovering(self)
-		end,
-		
-		isValid = function( self )
-			return lui.isvalid(self)
-		end,
-		
-		new = function( self, element, properties )
-			return lui.new(element, properties, self)
-		end,
-		
-		-- Base events
-		
-		onPreUpdate   = nil, -- function( Element self, number dt )
-		onPostUpdate  = nil, -- function( Element self, number dt )
-		onPreDraw     = nil, -- function( Element self )
-		onPostDraw    = nil, -- function( Element self )
-		
-	},
-	
-	-- Default values applied (by value) on every registered element
-	defaults = {
-		
-		-- Default base properties
-		x         = 0,
-		y         = 0,
-		width     = 0,
-		height    = 0,
-		focusable = true, -- While false, this element won't block mouse actions and cannot be focused.
-		enabled   = true, -- While false, this element and children will not be visible, updated, nor recieve events.
-		anchor    = { -- If nil, no anchor is used. Ignored if element has no parent (root element).
-			-- TODO: implement
-			left   = nil,
-			right  = nil,
-			top    = nil,
-			bottom = nil,
-		},
-		
-		-- Base private values
-		-- (Internally used values not intended to be directly read or modified outside of LUI.)
-		_ = {
-			type = '',      -- Element type name.
-			parent = nil,   -- Parent element containing this element.
-			elements = { }, -- Children elements.
-			valid = true,   -- Used to check if an element is destroyed.
-			anims = { },    -- Animation states.
-		},
-		
-	},
-	
-}
+lui._ = { }
+
+-- Registry for available element types.
+lui._.registry = { }
+
+-- Root/top-level element instances.
+lui._.elements = { }
+
+-- Elements currently being hovered over.
+lui._.hoverElements = { }
+
+-- Elements currently focused. Last element has input focus.
+lui._.focusElements = { }
 
 
 ------------------------------------------------------------------------------------------------------------------------
@@ -252,7 +129,8 @@ function lui.new( element, properties, parent )
 	assert(registeredElement ~= nil, "invalid element type given ("..element..")")
 	
 	-- Clone a new instance
-	local newElement = setmetatable(clone(registeredElement), { __index = lui._.base })
+	local newElement = setmetatable(clone(registeredElement), { __index = lui._.baseElement })
+	setmetatable(newElement._.animator, { __index = lui._.baseAnimator })
 	newElement._.parent = parent
 	
 	-- Apply user-defined properties
@@ -367,9 +245,9 @@ function lui.update( dt, _parent )
 			
 			lui.invoke(elem, 'onPreUpdate')
 			
-			lui.invalidate(elem)
+			elem._.animator:update(dt)
 			
-			-- TODO: update animation state here
+			lui.invalidate(elem)
 			
 			if elem.update then
 				elem:update(dt)
@@ -672,7 +550,7 @@ end
 function lui.iselement( element )
 	
 	local mt = getmetatable(element)
-	return mt and ( mt.__index == lui._.base )
+	return mt and ( mt.__index == lui._.baseElement )
 	
 end
 
@@ -682,7 +560,7 @@ end
 function lui.isvalid( element )
 	
 	local mt = getmetatable(element)
-	return mt and ( mt.__index == lui._.base ) and ( element._.valid == true )
+	return mt and ( mt.__index == lui._.baseElement ) and ( element._.valid == true )
 	
 end
 
@@ -1006,11 +884,117 @@ function lui.event( element, event, func )
 end
 
 ------------------------------------------------------------------------------------------------------------------------
-function lui.animation( element, anim, keyframes, start, flags )
+function lui.animation( element, name, keyframes, start, flags )
 	
-	error("not yet implemented")
+	if not lui.isvalid(element) then return nil end
 	
-	if not lui.isvalid(element) then return end
+	local animator = element._.animator
+	
+	if type(name) ~= 'string' then
+		-- self:anim() returns animation state for this element
+		return animator
+	end
+	
+	if type(animator._anims) ~= 'table' then
+		animator._anims = { }
+	end
+	
+	if type(keyframes) ~= 'table' then
+		-- self:anim('name') returns animation 'name'
+		return animator._anims[name]
+	end
+	
+	assert(start ~= nil, "start value cannot be nil")
+	
+	local newAnim = setmetatable({
+		
+		-- Public properties
+		name  = name,
+		start = start,
+		value = start,
+		
+		-- Flags
+		loops        = 0,
+		deleteOnStop = false,
+		
+		-- Private properties for internal use only
+		_animator = animator,
+		_playing  = false,
+		_position = 0,
+		_frames   = { },
+		_frameIdx = 0,
+		_duration = 0,
+		
+	}, { __index = lui._.baseAnimation })
+	animator._anims[name] = newAnim
+	
+	if type(flags) == 'table' then
+		
+		if flags.loops ~= nil then
+			newAnim.loops = flags.loops
+		end
+		
+		if flags.deleteOnStop ~= nil then
+			newAnim.deleteOnStop = flags.deleteOnStop
+		end
+		
+	end
+	
+	local duration = 0
+	
+	for i,kf in ipairs(keyframes) do
+		
+		local frame = { }
+		
+		for k,v in pairs(kf) do
+			
+			if k == 'delay' then
+				
+				assert(type(v) == 'number', "keyframe property 'delay' must be a number")
+				frame.delay = math.max(0, v)
+				
+			elseif k == 'value' then
+				
+				frame.value = v
+				
+			elseif k == 'transition' then
+				
+				if type(v) == 'string' then
+					
+					assert(newAnim._transitions[v] ~= nil, "keyframe property 'transition' is invalid")
+					frame.transition = v
+					
+				elseif type(v) == 'table' then
+					
+					assert(#v == 4, "keyframe property 'transition' is not a table of 4 numbers")
+					for j=1,4 do
+						assert(type(v[j]) == 'number', "keyframe property 'transition' is not a table of 4 numbers")
+					end
+					
+					frame.transition = { unpack(v) }
+					
+				else
+					
+					error("keyframe property 'transition' must be a string or table")
+					
+				end
+				
+			elseif k == 'call' then
+				
+				assert(type(v) == 'function', "keyframe property 'call' must be a function")
+				frame.call = v
+				
+			end
+			
+		end
+		
+		newAnim._duration = newAnim._duration + (frame.delay or 0)
+		
+		table.insert(newAnim._frames, frame)
+		
+	end
+	
+	return newAnim
 	
 	--[[ TODO: not yet implemented
 	
@@ -1020,15 +1004,17 @@ function lui.animation( element, anim, keyframes, start, flags )
 	self:anim('name'):pause()              -- pauses and returns animation 'name'
 	self:anim('name'):stop()               -- stops playing and resets to the beginning, value will be assigned to ...
 	                                       -- ... starting value. returns animation 'name'
-	self:anim('name').value                -- the current value of the animation
 	self:anim('name'):duration()           -- returns the duration of the animation in seconds
 	self:anim('name'):tell()               -- returns the current position of the animation in seconds
-	self:anim('name'):seek( offset )       -- returns the current position of the animation in seconds
+	self:anim('name'):seek( offset )       -- sets the current position of the animation in seconds
 	self:anim('name'):isPlaying()          -- returns true if animation is currently playing
 	self:anim('name'):isPaused()           -- returns true if animation is currently paused
 	self:anim('name'):isStopped()          -- returns true if animation is currently stopped
 	self:anim('name'):delete()             -- deletes the animation from this element.
-	self:anim('name'):flags( [flags] )     -- updates flags if table is given and returns a copy of the current flags
+	
+	self:anim('name').value                -- the current value of the animation
+	self:anim('name').deleteOnStop         -- If true, the animation is automatically deleted when stopped.
+	self:anim('name').loops                -- Number of time to loop the animation before stopping.
 	
 	-- Global animation functions?
 	self:anim()         -- gets animation state for this element
@@ -1045,9 +1031,8 @@ function lui.animation( element, anim, keyframes, start, flags )
 		{
 			
 			-- Determines the amount of time in seconds it takes to transition from the previous frame (or beginning).
-			-- Defaults 0. If delay is 0, value is applied immediately and callback function invoked, and immediately
+			-- Defaults 0. If delay is 0 or negative, value is applied immediately and callback function invoked, and immediately
 			-- moves to the next keyframe.
-			-- Cannot be negative (will raise an error).
 			number delay,
 			
 			-- The final value when this keyframe is reached.
@@ -1076,7 +1061,7 @@ function lui.animation( element, anim, keyframes, start, flags )
 		-- An example:
 		
 		{ delay = 1, value = 10 },
-		{ delay = 1
+		{ delay = 1 },
 		{ delay = 2, value = 100,      transition = 'ease' },
 		{ delay = 2, value = 1000000,  transition = {x1,y1,x2,y2} }, -- table given for custom cubic-bezier
 		{ delay = 5, value = 10000000, call = function(val) doSomething() end }, 
@@ -1116,8 +1101,6 @@ end
 function lui.invalidate( element )
 	
 	-- Invalidate position and size based on anchoring
-	
-	-- TODO: not working yet
 	
 	if not lui.isvalid(element) then return end
 	if type(element.anchor) ~= 'table' then return end
@@ -1170,6 +1153,304 @@ end
 
 
 ------------------------------------------------------------------------------------------------------------------------
+-- Default values applied (by value) on every registered element type
+lui._.defaults = {
+	
+	-- Default base properties
+	x         = 0,
+	y         = 0,
+	width     = 0,
+	height    = 0,
+	focusable = true, -- While false, this element won't block mouse actions and cannot be focused.
+	enabled   = true, -- While false, this element and children will not be visible, updated, nor recieve events.
+	anchor    = { -- If nil, no anchor is used. Ignored if element has no parent (root element).
+		-- TODO: implement
+		left   = nil,
+		right  = nil,
+		top    = nil,
+		bottom = nil,
+	},
+	
+	-- Base private values
+	-- (Internally used values not intended to be directly read or modified outside of LUI.)
+	_ = {
+		type     = '',   -- Element type name.
+		parent   = nil,  -- Parent element containing this element.
+		elements = { },  -- Children elements.
+		valid    = true, -- Used to check if an element is destroyed.
+		animator = { },  -- Animation state.
+	},
+	
+}
+
+
+------------------------------------------------------------------------------------------------------------------------
+-- Metatable applied on all elements
+lui._.baseElement = {
+		
+	-- Base methods
+	
+	anim = function( self, name, keyframes, start, flags )
+		return lui.animation(self, name, keyframes, start, flags)
+	end,
+	
+	bringToFront = function( self )
+		return lui.bringtofront(self)
+	end,
+	
+	destroy = function( self )
+		return lui.destroy(self)
+	end,
+	
+	-- TODO: is multiple callbacks per event even needed?
+	event = function( self, event, func )
+		return lui.event(self, event, func)
+	end,
+	
+	getElement = function( self, idx )
+		return lui.getElement( idx, self )
+	end,
+	
+	getElements = function( self )
+		return lui.getElements( self )
+	end,
+	
+	getElementCount = function( self )
+		return lui.getElementCount( self )
+	end,
+	
+	getGlobalPos = function( self )
+		return lui.getglobalpos(self)
+	end,
+	
+	getLeft = function( self )
+		return self.x
+	end,
+	
+	getRight = function( self )
+		return self.x + self.width
+	end,
+	
+	getTop = function( self )
+		return self.y
+	end,
+	
+	getBottom = function( self )
+		return self.y + self.height
+	end,
+	
+	getParent = function( self )
+		return self._.parent
+	end,
+	
+	getType = function( self )
+		return self._.type
+	end,
+	
+	invoke = function( self, event, ... )
+		return lui.invoke(self, event, ...)
+	end,
+	
+	isType = function( self, type )
+		return self._.type == string.lower(type)
+	end,
+	
+	hasFocus = function( self )
+		return lui.hasfocus(self)
+	end,
+	
+	hasInputFocus = function( self )
+		return lui.hasinputfocus(self)
+	end,
+	
+	hasParent = function( self )
+		return lui.isvalid(self._.parent)
+	end,
+	
+	isHovering = function( self )
+		return lui.ishovering(self)
+	end,
+	
+	isValid = function( self )
+		return lui.isvalid(self)
+	end,
+	
+	new = function( self, element, properties )
+		return lui.new(element, properties, self)
+	end,
+	
+	-- Base events
+	
+	onPreUpdate   = nil, -- function( Element self, number dt )
+	onPostUpdate  = nil, -- function( Element self, number dt )
+	onPreDraw     = nil, -- function( Element self )
+	onPostDraw    = nil, -- function( Element self )
+	
+}
+
+
+------------------------------------------------------------------------------------------------------------------------
+-- Metatable applied on the animator on all elements
+lui._.baseAnimator = {
+	
+	-- plays all animations
+	play = function( self )
+		
+		for i,kf in pairs(self._anims) do
+			kf:play()
+		end
+		
+	end,
+	
+	-- pauses all animations
+	pause = function( self )
+		
+		for i,kf in pairs(self._anims) do
+			kf:pause()
+		end
+		
+	end,
+	
+	-- stops and resets all animations
+	stop = function( self )
+		
+		for i,kf in pairs(self._anims) do
+			kf:stop()
+		end
+		
+	end,
+	
+	-- returns a copy table of all animations (i.e. for name,anim in pairs(self:anim():all()) do ... end)
+	all = function( self )
+		
+		return { unpack(self._anims) }
+		
+	end,
+	
+	-- deletes all animations
+	clear = function( self )
+		
+		self._anims = { }
+		
+	end,
+	
+	-- updates all animations
+	update = function( self, dt )
+		
+		if self._anims == nil then return end
+		
+		for i,kf in pairs(self._anims) do
+			kf:update(dt)
+		end
+		
+	end,
+	
+}
+
+
+------------------------------------------------------------------------------------------------------------------------
+-- Metatable applied on all animation tables
+lui._.baseAnimation = {
+	
+	_transitions = {
+		-- Cubic-bezier formatted as { x1, y1, x2, y2 }
+		['none']        = true,
+		['linear']      = true, -- { 0,    0,   1,    1 } -- should be done without curves
+		['ease']        = { 0.25, 0.1, 0.25, 1 },
+		['ease-in']     = { 0.4,  0,   1,    1 },
+		['ease-out']    = { 0,    0,   0.6,  1 },
+		['ease-in-out'] = { 0.4,  0,   0.6,  1 },
+		['sin']         = { (math.pi-2)/math.pi, 0, 1 - (math.pi-2)/math.pi, 1 },
+		['sin-inverse'] = { 0, (math.pi-2)/math.pi, 1, 1 - (math.pi-2)/math.pi },
+	},
+	
+	-- plays and returns animation 'name'
+	play = function( self )
+		
+		self._playing = true
+		
+	end,
+	
+	-- pauses and returns animation 'name'
+	pause = function( self )
+		
+		self._playing = false
+		
+	end,
+	
+	-- stops playing and resets to the beginning, value will be assigned to starting value
+	-- returns animation 'name'
+	stop = function( self )
+		
+		self._playing  = false
+		self._position = 0
+		self._frameIdx = 0
+		
+	end,
+	
+	-- returns the duration of the animation in seconds
+	duration = function( self )
+		
+		return self._duration
+		
+	end,
+	
+	-- returns the current position of the animation in seconds
+	tell = function( self )
+		
+		return self._position
+		
+	end,
+	
+	-- sets current position of the animation in seconds
+	seek = function( self, seconds )
+		
+		-- TODO: implement
+		error("not yet implemented")
+		
+		self:update(0) -- only need to update value
+		
+	end,
+	
+	-- returns true if animation is currently playing
+	isPlaying = function( self )
+		
+		return self._playing
+		
+	end,
+	
+	-- returns true if animation is currently paused
+	isPaused = function( self )
+		
+		return not self._playing
+		
+	end,
+	
+	-- returns true if animation is currently stopped
+	isStopped = function( self )
+		
+		return not self._playing and self._position == 0 and self._frameIdx == 0
+		
+	end,
+	
+	-- deletes the animation from this element
+	delete = function( self )
+		
+		self._animator._anims[self.name] = nil
+		
+	end,
+	
+	-- updates and advances the animation by 'dt' seconds
+	update = function( self, dt )
+		
+		-- TODO: implement
+		
+	end,
+	
+}
+
+
+------------------------------------------------------------------------------------------------------------------------
 -- Setup standard theme
 lui.theme = { }
 lui.theme.color = { }
@@ -1195,9 +1476,10 @@ lui.theme.font.windowTitle = love.graphics.newFont(11)
 -- Load standard elements
 require 'lui.Elements.Panel'
 require 'lui.Elements.Text'
+require 'lui.Elements.Image'
 require 'lui.Elements.Button'
+require 'lui.Elements.ScrollBar'
 require 'lui.Elements.Window'
 require 'lui.Elements.TextInput'
-require 'lui.Elements.Image'
 
 return lui

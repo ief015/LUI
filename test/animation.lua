@@ -27,7 +27,7 @@ window:anim('moveY', {
 
 function test.update(dt)
 	
-	x = window:anim('moveY').value
-	y = window:anim('moveY').value
+	window.x = window:anim('moveX').value
+	window.y = window:anim('moveY').value
 	
 end
