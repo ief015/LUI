@@ -84,6 +84,23 @@ end
 
 
 ------------------------------------------------------------------------------------------------------------------------
+function cubicbezier(t, x1, y1, x2, y2)
+	
+	-- TODO: implement...MATHS
+	return 0
+	
+end
+
+
+------------------------------------------------------------------------------------------------------------------------
+function lerp(t, a, b)
+	
+	return a * (1 - t) + b * t
+	
+end
+
+
+------------------------------------------------------------------------------------------------------------------------
 -- Register a new element type.
 -- Unprovided element properties will be given default values during registry.
 -- The master element table will be registered by reference.
@@ -923,7 +940,9 @@ function lui.animation( element, name, keyframes, start, flags )
 		_position = 0,
 		_frames   = { },
 		_frameIdx = 0,
+		_offset   = 0,
 		_duration = 0,
+		_loopCounter = 0,
 		
 	}, { __index = lui._.baseAnimation })
 	animator._anims[name] = newAnim
@@ -1031,8 +1050,8 @@ function lui.animation( element, name, keyframes, start, flags )
 		{
 			
 			-- Determines the amount of time in seconds it takes to transition from the previous frame (or beginning).
-			-- Defaults 0. If delay is 0 or negative, value is applied immediately and callback function invoked, and immediately
-			-- moves to the next keyframe.
+			-- Defaults 0. If delay is 0 or less; value is applied immediately, callback function is invoked, and
+			-- immediately moves to the next keyframe.
 			number delay,
 			
 			-- The final value when this keyframe is reached.
@@ -1041,7 +1060,8 @@ function lui.animation( element, name, keyframes, start, flags )
 			-- Changing value types is allowed, if desired.
 			anytype value,
 			
-			-- The type of transition to use for number values. Can be a string or table.
+			-- The type of transition to use for number values. Can be a string or table. Doesn't do anything if delay
+			-- and value are not provided in this keyframe.
 			-- Transition strings are:
 			-- 'none', 'linear', 'ease', 'ease-in', 'ease-out', 'ease-in-out', 'sin', 'sin-inverse'
 			-- A table can be used instead as parameters for a cubic-bezier transition.
@@ -1051,8 +1071,7 @@ function lui.animation( element, name, keyframes, start, flags )
 			string/table[4] transition,
 			
 			-- Callback function invoked when this keyframe is reached.
-			-- Passes the new value as an argument.
-			function( v ) call,
+			function( ) call,
 			
 		}, ...
 		
@@ -1107,6 +1126,8 @@ function lui.invalidate( element )
 	
 	local anchor = element.anchor
 	local parent = element:getParent()
+	
+	-- TODO: support negative values for anchor relative to opposide boundary
 	
 	if anchor.left then
 		
@@ -1164,7 +1185,7 @@ lui._.defaults = {
 	focusable = true, -- While false, this element won't block mouse actions and cannot be focused.
 	enabled   = true, -- While false, this element and children will not be visible, updated, nor recieve events.
 	anchor    = { -- If nil, no anchor is used. Ignored if element has no parent (root element).
-		-- TODO: implement
+		-- TODO: change to [1:4] TRBL instead of keys, nicer to write
 		left   = nil,
 		right  = nil,
 		top    = nil,
@@ -1385,6 +1406,10 @@ lui._.baseAnimation = {
 		self._playing  = false
 		self._position = 0
 		self._frameIdx = 0
+		self._offset = 0
+		self._loopCounter = 0
+		
+		self:update(0) -- only need to update value
 		
 	end,
 	
@@ -1443,7 +1468,96 @@ lui._.baseAnimation = {
 	-- updates and advances the animation by 'dt' seconds
 	update = function( self, dt )
 		
-		-- TODO: implement
+		-- TODO: Implement
+		
+		if #self._frames == 0 then
+			self.value     = self.start
+			self._playing  = false
+			return
+		end
+		
+		if self._playing then
+			
+			self._offset   = self._offset + dt
+			self._position = self._position + dt
+			
+		end
+		
+		local kf, kfnext
+		
+		-- Iterate through reached keyframes
+		repeat
+			
+			kf     = self._frames[self._frameIdx]
+			kfnext = self._frames[self._frameIdx + 1]
+			
+			local nextReached = self._offset > kfnext.delay
+			
+			if nextReached then
+				
+				-- Reached next keyframe
+				self._offset   = self._offset - kfnext.delay
+				self._frameIdx = self._frameIdx + 1
+				
+				if self._frameIdx >= #self._frames then
+				
+					-- End of animation reached
+					self._frameIdx = 0
+					self._position = self._offset
+					
+					if self.loops > 0 then
+						-- Finite looping
+						if self._loopCounter > self.loops then
+							-- Does not loop / reached end of looping. Stop playing
+							self._playing     = false
+							self._position    = 0
+							self._offset      = 0
+							self._loopCounter = 0
+						else
+							-- Starting a new loop
+							self._loopCounter = self._loopCounter + 1
+						end
+					end
+					
+				end
+				
+				if kfnext.call then
+					-- Invoke keyframe callback
+					self.value = kfnext.value
+					kfnext:call()
+				end
+				
+			end
+			
+		until not nextReached
+		
+		local left = kf and kf.value or self.start
+		local right = kfnext.value
+		
+		-- Update self.value here
+		if kfnext.delay and kfnext.delay > 0
+		and self._offset > 0 and (kfnext.transition == nil or kfnext.transition ~= 'none')
+		and type(left) == 'number' and type(right) == 'number' then
+			
+			local t = math.max(0, math.min(1, self._offset / kfnext.delay))
+			
+			if kfnext.transition == nil or kfnext.transition == 'linear' then
+				
+				self.value = lerp(t, left, right)
+				
+			else
+				
+				local bezier = self._transitions[kfnext.transition]
+				
+				self.value = lerp(cubicbezier(t, unpack(bezier)), left, right)
+				
+			end
+			
+		else
+			
+			self.value = left
+			
+		end
 		
 	end,
 	
